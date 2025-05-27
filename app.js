@@ -6,7 +6,7 @@ const path = require("path");
 const {Stamp} = require("./model");
 require("dotenv").config();
 
-const { listFilesInBucket } = require("./aws");
+const { listFilesInBucket, uploadFileIntoBucket } = require("./aws");
 
 const app = express();
 
@@ -33,8 +33,7 @@ app.use(express.static("public/stamps"));
 app.get("/stamps", async (req, res, next) => {
   const result = await Stamp.find({}, "-createdAt -updatedAt");
 
-  const urls = await listFilesInBucket({ bucketName: "stamps-bucket-1715875501" });
-  console.log(urls);
+  const urls = await listFilesInBucket();
 
   const withUrls = result.map((el, i) => {
 		const obj = el.toObject();
@@ -46,19 +45,19 @@ app.get("/stamps", async (req, res, next) => {
 })
 
 app.post("/stamp/upload", upload.single('stamp'), async (req, res, next) => {
-  console.log(req.file);
-  const { path: tempPath, originalname } = req.file;
-
-  const newPath = path.join(__dirname, "public", "stamps", originalname);
-
-  await fs.rename(tempPath, newPath);
+  const { path, originalname } = req.file;
 
   await Stamp.create({ stamp: originalname });
 
+  const url = await uploadFileIntoBucket({ key: originalname, filePath: path });
+
+  await fs.unlink(path);
+
   res.status(201).json({
-    message: "success",
-    originalname
-  });
+		message: "success",
+		originalname,
+		url,
+	});
 })
 
 app.use((err, req, res, next) => {
