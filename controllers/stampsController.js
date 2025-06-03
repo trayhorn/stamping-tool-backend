@@ -19,9 +19,12 @@ const getAllStamps = async (req, res) => {
 
 const uploadStamp = async (req, res) => {
   const { path, originalname } = req.file;
+  console.log(originalname);
 
   const duplicate = await Stamp.find({ stamp: originalname });
-  if (duplicate) {
+
+  console.log(duplicate);
+  if (duplicate.length !== 0) {
     throw HttpError(409, "Stamp with this name already exists");
   }
 
