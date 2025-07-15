@@ -1,4 +1,4 @@
-const { S3, ListObjectsCommand, GetObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3, ListObjectsCommand, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const fs = require("fs/promises");
 
@@ -49,4 +49,18 @@ const uploadFileIntoBucket = async ({ key, filePath }) => {
 	return url;
 };
 
-module.exports = { listFilesInBucket, uploadFileIntoBucket };
+const deleteObjectFromBucket = async (imageKey) => {
+	const input = {
+		Bucket: bucketName,
+		Key: imageKey,
+	};
+	const command = new DeleteObjectCommand(input);
+	const response = await s3client.send(command);
+	return response;
+}
+
+module.exports = {
+	listFilesInBucket,
+	uploadFileIntoBucket,
+	deleteObjectFromBucket,
+};

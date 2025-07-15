@@ -1,4 +1,4 @@
-const { listFilesInBucket, uploadFileIntoBucket } = require("../aws");
+const { listFilesInBucket, uploadFileIntoBucket, deleteObjectFromBucket } = require("../aws");
 const { Stamp } = require("../model");
 const fs = require("fs/promises");
 const { HttpError, ctrlWrapper } = require("../helpers");
@@ -19,16 +19,14 @@ const getAllStamps = async (req, res) => {
 
 const uploadStamp = async (req, res) => {
   const { path, originalname } = req.file;
-  console.log(originalname);
 
   const duplicate = await Stamp.find({ stamp: originalname });
 
-  console.log(duplicate);
   if (duplicate.length !== 0) {
     throw HttpError(409, "Stamp with this name already exists");
   }
 
-  await Stamp.create({ stamp: originalname });
+  const { _id } = await Stamp.create({ stamp: originalname });
 
   const url = await uploadFileIntoBucket({
     key: originalname,
@@ -39,14 +37,30 @@ const uploadStamp = async (req, res) => {
 
   res.status(201).json({
     message: "success",
+    _id,
     originalname,
     url,
+  });
+}
+
+const deleteStamp = async (req, res) => {
+  const { id } = req.params;
+
+  const stampImage = await Stamp.findById(id);
+  if (!stampImage) throw HttpError(400, "No such stamp");
+
+  await Stamp.findByIdAndDelete(id);
+  await deleteObjectFromBucket(stampImage.stamp);
+
+  res.status(200).json({
+    message: "success",
   });
 }
 
 const ctrl = {
 	getAllStamps: ctrlWrapper(getAllStamps),
 	uploadStamp: ctrlWrapper(uploadStamp),
-}
+	deleteStamp: ctrlWrapper(deleteStamp),
+};
 
 module.exports = ctrl;
